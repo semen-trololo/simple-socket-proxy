@@ -1,6 +1,7 @@
 import socket
 import threading
 
+# Нвчтройки прокс
 local_host = '127.0.0.1'
 local_port = 3000
 remote_host = '127.0.0.1'
@@ -8,6 +9,7 @@ remote_port = 5000
 receive_first = False
 
 def hexdump(src, length=16):
+    """ Функция вывода хеш дампа данных"""
     FILTER = ''.join([(len(repr(chr(x))) == 3) and chr(x) or '.' for x in range(256)])
     lines = []
     for c in range(0, len(src), length):
@@ -26,14 +28,17 @@ def receive_from(connection):
     return data
 
 def request_handler(buffer):
+    """ Здесть можем написать обработку взодящих данных"""
     return buffer
 
 def response_handler(buffer):
+    """ Здесь можем написать обработку изходящих данных """
     return buffer
 
 def proxy_handler(client_socket, remote_host, remote_port, receive_first):
-    remote_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     remote_socket.connect((remote_host, remote_port))
+    # Если сначало нужно получить ответ от удаленого пользователя.
     if receive_first:
         remote_buffer = receive_from(remote_socket)
         remote_buffer = response_handler(remote_buffer)
