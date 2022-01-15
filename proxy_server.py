@@ -1,12 +1,13 @@
 import socket
 import threading
 
-# Нвчтройки прокс
+# Настройки прокс
 local_host = '127.0.0.1'
-local_port = 3000
-remote_host = '127.0.0.1'
-remote_port = 5000
+local_port = 53
+remote_host = '192.168.0.1'
+remote_port = 53
 receive_first = False
+protocol = 'UDP'
 
 def hexdump(src, length=16):
     """ Функция вывода хеш дампа данных"""
@@ -26,6 +27,16 @@ def receive_from(connection):
     except:
         pass
     return data
+
+def receive_from_udp(connection):
+    connection.settimeout(10)
+    try:
+        data, addres = connection.recvfrom(4096)
+    except:
+        data = ''
+        addres = ('', 0)
+        return data, addres
+    return data, addres
 
 def request_handler(buffer):
     """ Здесть можем написать обработку взодящих данных"""
@@ -65,6 +76,32 @@ def proxy_handler(client_socket, remote_host, remote_port, receive_first):
             remote_socket.close()
             print("[*] No more data. Closing connections.")
             break
+def server_loop_udp(local_host, local_port, remote_host, remote_port):
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        server.bind((local_host, local_port))
+    except:
+        print("[!!] Failed to listen on %s:%d" % (local_host, local_port))
+        print("[!!] Check for other listening sockets or correct permissions.")
+    print("[*] Listening on %s:%d" % (local_host, local_port))
+    remote_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    while True:
+        local_buffer, local_addr = receive_from_udp(server)
+        if len(local_buffer):
+            print("[==>] Received %d bytes from localhost." % len(local_buffer))
+            print(hexdump(local_buffer.decode('utf-8', 'backslashreplace')))
+            local_buffer = request_handler(local_buffer)
+            remote_socket.sendto(local_buffer, (remote_host, remote_port))
+            print("[==>] Sent to remote.")
+        if local_addr[0] == '':
+            continue
+        remote_buffer, remore_addr = receive_from_udp(remote_socket)
+        if len(remote_buffer):
+            print("[<==] Received %d bytes from remote." % len(remote_buffer))
+            print(hexdump(remote_buffer.decode('utf-8', 'backslashreplace')))
+            remote_buffer = response_handler(remote_buffer)
+            server.sendto(remote_buffer, local_addr)
+            print("[<==] Sent to localhost.")
 
 def server_loop(local_host, local_port, remote_host, remote_port, receive_first):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -81,4 +118,7 @@ def server_loop(local_host, local_port, remote_host, remote_port, receive_first)
         proxy_thread = threading.Thread(target=proxy_handler, args=(client_socket, remote_host, remote_port, receive_first))
         proxy_thread.start()
 
-server_loop(local_host, local_port, remote_host, remote_port, receive_first)
+if protocol == 'UDP' :
+    server_loop_udp(local_host, local_port, remote_host, remote_port)
+else:
+    server_loop(local_host, local_port, remote_host, remote_port, receive_first)
