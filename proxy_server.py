@@ -29,7 +29,7 @@ def receive_from(connection):
     return data
 
 def receive_from_udp(connection):
-    connection.settimeout(10)
+    connection.settimeout(5)
     try:
         data, addres = connection.recvfrom(4096)
     except:
@@ -88,19 +88,21 @@ def server_loop_udp(local_host, local_port, remote_host, remote_port):
     while True:
         local_buffer, local_addr = receive_from_udp(server)
         if len(local_buffer):
+            last_addr = local_addr
             print("[==>] Received %d bytes from localhost." % len(local_buffer))
             print(hexdump(local_buffer.decode('utf-8', 'backslashreplace')))
             local_buffer = request_handler(local_buffer)
             remote_socket.sendto(local_buffer, (remote_host, remote_port))
             print("[==>] Sent to remote.")
-        if local_addr[0] == '':
-            continue
         remote_buffer, remore_addr = receive_from_udp(remote_socket)
         if len(remote_buffer):
             print("[<==] Received %d bytes from remote." % len(remote_buffer))
             print(hexdump(remote_buffer.decode('utf-8', 'backslashreplace')))
             remote_buffer = response_handler(remote_buffer)
-            server.sendto(remote_buffer, local_addr)
+            if local_addr[0] == '':
+                server.sendto(remote_buffer, last_addr)
+            else:
+                server.sendto(remote_buffer, local_addr)
             print("[<==] Sent to localhost.")
 
 def server_loop(local_host, local_port, remote_host, remote_port, receive_first):
